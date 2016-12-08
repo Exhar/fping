@@ -299,6 +299,7 @@ int generate_flag = 0;              /* flag for IP list generation */
 int verbose_flag, quiet_flag, stats_flag, unreachable_flag, alive_flag;
 int elapsed_flag, version_flag, count_flag, loop_flag, netdata_flag;
 int per_recv_flag, report_all_rtts_flag, name_flag, addr_flag, backoff_flag;
+int rtdonly_flag = 0;
 int multif_flag;
 int outage_flag = 0;
 int timestamp_flag = 0;
@@ -382,7 +383,7 @@ int main( int argc, char **argv )
 
     /* get command line options */
 
-    while( ( c = getopt( argc, argv, "gedhlmnNqusaAvDRz:t:H:i:p:f:r:c:b:C:Q:B:S:I:T:O:M:o" ) ) != EOF )
+    while( ( c = getopt( argc, argv, "xgedhlmnNqusaAvDRz:t:H:i:p:f:r:c:b:C:Q:B:S:I:T:O:M:o" ) ) != EOF )
     {
         switch( c )
         {
@@ -506,6 +507,10 @@ int main( int argc, char **argv )
 
         case 'a':
             alive_flag = 1;
+            break;
+
+        case 'x':
+            rtdonly_flag = 1;
             break;
 
         case 'H':  
@@ -1391,17 +1396,11 @@ void print_per_system_splits( void )
 {
     int i, avg, outage_ms_i;
     HOST_ENTRY *h;
-    struct tm *curr_tm;
 
     fflush( stdout );
 
     if( verbose_flag || per_recv_flag )
         fprintf( stderr, "\n" );
-
-    gettimeofday( &current_time, &tz );
-    curr_tm = localtime( ( time_t* )&current_time.tv_sec );
-    fprintf( stderr, "[%2.2d:%2.2d:%2.2d]\n", curr_tm->tm_hour,
-        curr_tm->tm_min, curr_tm->tm_sec );
 
     for( i = 0; i < num_hosts; i++ ) {
         h = table[i];
@@ -1442,8 +1441,6 @@ void print_per_system_splits( void )
         }
         
         fprintf( stderr, "\n" );
-        h->num_sent_i = h->num_recv_i = h->max_reply_i =
-            h->min_reply_i = h->total_time_i = 0;
     
     }
 } /* print_per_system_splits() */
@@ -1753,20 +1750,26 @@ int wait_for_reply(long wait_time)
         num_alive++;
         if( verbose_flag || alive_flag )
         {
-            printf( "%s", h->host );
+           if (rtdonly_flag )
+           {
+               printf( "%s", sprint_tm( this_reply ) );
+           }
+           else {
+               printf( "%s", h->host );
+               printf( "%s", h->host );
 
-            if( verbose_flag )
-                printf( " is alive" );
+               if( verbose_flag )
+                   printf( " is alive" );
 
-            if( elapsed_flag )
-                printf( " (%s ms)", sprint_tm( this_reply ) );
+               if( elapsed_flag )
+                   printf( " (%s ms)", sprint_tm( this_reply ) );
 
-            if(addr_cmp((struct sockaddr *)&response_addr, (struct sockaddr *)&h->saddr)) {
-                char buf[INET6_ADDRSTRLEN];
-                getnameinfo((struct sockaddr *)&response_addr, response_addr_len, buf, INET6_ADDRSTRLEN, NULL, 0, NI_NUMERICHOST);
-                fprintf( stderr, " [<- %s]", buf);
-            }
-
+               if(addr_cmp((struct sockaddr *)&response_addr, (struct sockaddr *)&h->saddr)) {
+                   char buf[INET6_ADDRSTRLEN];
+                   getnameinfo((struct sockaddr *)&response_addr, response_addr_len, buf, INET6_ADDRSTRLEN, NULL, 0, NI_NUMERICHOST);
+                   fprintf( stderr, " [<- %s]", buf);
+               }
+            }/* IF */
             printf( "\n" );
         
         }/* IF */
@@ -2534,6 +2537,7 @@ void usage(int is_error)
     fprintf(out, "   -T n       ignored (for compatibility with fping 2.4)\n");
     fprintf(out, "   -u         show targets that are unreachable\n" );
     fprintf(out, "   -v         show version\n" );
+    fprintf(out, "   -x         show rtd only\n" );
     fprintf(out, "   targets    list of targets to check (if no -f specified)\n" );
     fprintf(out, "\n");
     exit(is_error);
